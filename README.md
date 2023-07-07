@@ -18,7 +18,6 @@
 - Exit the script.
 
 ## Usage
-sudo chmod +x a
-./a
+sudo cd add_kali && sudo chmod +x a && ./a
 
 ## now you can just type 'a' in cmd
