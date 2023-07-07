@@ -1,0 +1,226 @@
+#!/bin/bash
+read -p "cp /root/.0/a /usr/local/bin (enter)"
+cp /root/.0/a /usr/local/bin
+
+# Define ANSI color codes
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Function to print the sources.list file with line numbers
+print_sources_list() {
+  awk '{print NR, $0}' /etc/apt/sources.list
+}
+
+update() {
+   sudo apt update
+}
+
+upgrade() {
+   sudo apt upgrade
+}
+
+update_upgrade() {
+   sudo apt update && sudo  apt upgrade
+}
+
+install() {
+  read -p "Enter the package names separated by spaces: " packages
+  sudo apt install $packages
+}
+
+
+# Function to check if the Kali repo is already present in sources.list
+is_kali_repo_present() {
+  if grep -q "http.kali.org/kali" /etc/apt/sources.list; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Function to add the Kali repo to sources.list if not already present
+add_kali_repo() {
+  if is_kali_repo_present; then
+    echo "Kali repo is already present in sources.list."
+  else
+    echo "deb http://http.kali.org/kali kali-rolling main non-free contrib" | sudo tee -a /etc/apt/sources.list
+    echo "Kali repo added successfully."
+  fi
+}
+
+remove_line() {
+  echo "Enter the line number to remove (press Enter to cancel):"
+  read line_number
+
+  if [[ -n "$line_number" ]]; then
+    if [[ -z $(sed -n "${line_number}p" /etc/apt/sources.list) ]]; then
+      echo "Invalid line number."
+    else
+      sudo sed -i "${line_number}d" /etc/apt/sources.list
+      echo "Line ${line_number} removed successfully."
+    fi
+  else
+    echo "No line removed."
+  fi
+}
+
+# Function to uncomment/comment a line in sources.list based on line number
+toggle_line_comment() {
+  echo "Enter the line number to uncomment/comment:"
+  read line_number
+
+  if [[ $(sed -n "${line_number}p" /etc/apt/sources.list) == \#* ]]; then
+    sudo sed -i "${line_number}s/^#//" /etc/apt/sources.list
+    echo "Line ${line_number} uncommented successfully."
+  else
+    sudo sed -i "${line_number}s/^/#/" /etc/apt/sources.list
+    echo "Line ${line_number} commented successfully."
+  fi
+}
+
+# Function to create a file with all installed package names
+create_package_list() {
+  # Get the package list file name from user input
+  read -p "Enter the package list file name: " package_list_file
+
+  # Create a file with all installed package names
+  dpkg --get-selections | awk '{print $1}' > "$package_list_file"
+
+  echo "Package list created successfully!"
+}
+
+# Function to install packages from a file
+install_from_file() {
+  # Get the package list file name from user input
+  read -p "Enter the package list file name to install from: " package_list_file
+
+  # Check if the package list file exists
+  if [ -f "$package_list_file" ]; then
+    # Update package information
+    sudo apt-get update
+
+    # Read all package names from the file and install them using `apt-get install` in a single command
+    packages=$(<"$package_list_file")
+    sudo apt-get install -y $packages
+
+    echo "Packages installed successfully?!"
+  else
+    echo "Package list file not found. Please make sure the file exists."
+  fi
+}
+
+add_custom_repo() {
+  echo "Enter the custom repository URL to add:"
+  read repo_url
+
+  if [[ -z "$repo_url" ]]; then
+    echo "Invalid repository URL."
+  else
+    echo "deb $repo_url" | sudo tee -a /etc/apt/sources.list > /dev/null
+    echo "Custom repository added successfully."
+  fi
+}
+
+start_vncserver_after_boot() {
+    cp /root/.0/vncserver.service /etc/systemd/system
+    chmod +x /etc/systemd/system/vncserver.service
+    sudo systemctl enable vncserver.service
+    sudo systemctl start vncserver.service
+}
+
+shutdown() {
+  sudo shutdown now
+}
+
+reboot() {
+  sudo reboot
+}
+
+# Main function
+main() {
+  clear
+  print_sources_list
+
+  # Main menu
+  while true; do
+    clear
+    print_sources_list
+    echo " "
+    echo -e "${GREEN}[a]${NC} Update "
+    echo -e "${GREEN}[b]${NC} Upgrade "
+    echo -e "${GREEN}[c]${NC} Update/Upgrade "
+    echo -e "${GREEN}[d]${NC} Install "
+    echo " " 
+    echo -e "${RED}[1]${NC} Add Kali "
+    echo -e "${RED}[2]${NC} Uncomment/Comment "  
+    echo -e "${RED}[3]${NC} Remove a line "
+    echo -e "${RED}[4]${NC} Backup state "
+    echo -e "${RED}[5]${NC} Install state "
+    echo -e "${RED}[6]${NC} Add repo "
+    echo -e "${RED}[v]${NC} Vncserver after boot"
+    echo " "
+    echo -e "${YELLOW}[s]${NC} Shutdown now"
+    echo -e "${YELLOW}[r]${NC} Reboot"
+    echo -e "${YELLOW}[0]${NC} Exit"
+
+    read -p "choice: " choice
+
+    case $choice in
+      a)
+        update
+        ;;
+      b)
+        upgrade
+        ;;
+      c)
+        update_upgrade
+        ;;
+      d)
+        install
+        read -p "enter ..."
+        ;;
+      1)
+        add_kali_repo
+        ;;
+      2)
+        toggle_line_comment
+        ;;
+      3)
+        remove_line
+        ;;
+      4)
+        create_package_list
+        ;;
+      5)
+        install_from_file
+        ;;
+      6)
+        add_custom_repo
+        ;;
+      v)
+        read -p "do u have .0/vncserver.service"
+        start_vncserver_after_boot
+        read -p "enter ..."
+        ;;
+      s)
+        shutdown
+        ;;
+      r)
+        reboot
+        ;;
+      0)
+       echo "Exiting..."
+        exit 0
+        ;;
+      *)
+        echo "Invalid choice. Please try again."
+        read -p "enter ..."
+        ;;
+    esac
+  done
+}
+
+# Run the main function (wrote by chagpt3.5)
+main

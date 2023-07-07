@@ -1,0 +1,11 @@
+[Unit] 
+Description=VNC Server 
+After=network.target 
+
+[Service] 
+ExecStart=/usr/bin/vncserver -geometry 720x1280 :1 
+User=root
+Type=forking 
+
+[Install] 
+WantedBy=multi-user.target
